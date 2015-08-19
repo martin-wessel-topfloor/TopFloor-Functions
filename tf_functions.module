@@ -1,0 +1,257 @@
+<?php
+/**
+ * Load JSON
+ *
+ * Loads JSON file named $module.json, using a file saved anywhere in the
+ * active theme directory and if not found using $module.json saved anywhere in
+ * the calling module directory.  The file is parsed with PHP's json_decode
+ * command and then saved using drupals variable_set command as an array under
+ * the $module_settings key.  No error checking other then file availability
+ * and well formed JSON is performed.
+ *
+ * @param string module
+ *   The name of the module that needs JSON loaded. Do not include the file
+ *   extension
+ *
+ * @return bool
+ *   False indicates that there was an error loading the JSON,
+ *   True indicates that the JSON file was loaded, parsed, and saved
+ *
+ * @TODO: Use _tf_functions_get_file_path to get file path
+ * @TODO: Add drupal_alter just before variable_set
+ */
+function tf_functions_load_json ($module) {
+  
+  $result         = false;
+  $file           = $module.'.json';
+  $message        = 'Unknown error loading '.$file;
+
+  $data           = $module.'_settings';
+
+// XXX: _tf_functions_get_file_path goes here
+  $theme_search   = file_scan_directory(drupal_get_path('theme', $GLOBALS['theme'])  ,'/'.$file.'/');
+  $module_search  = file_scan_directory(drupal_get_path('module', $module) ,'/'.$file.'/');
+
+  // Get settings path and file checking theme then module directories 
+  if ( !empty( $theme_search ) ) {
+    // JSON file in theme folder
+    $settings_data = array_shift($theme_search);
+    $settings_path = $settings_data->uri;
+    $result = true;
+  }
+  elseif ( !empty( $module_search ) ) {
+    // JSON file in module folder
+    $settings_data = array_shift($module_search);
+    $settings_path = $settings_data->uri;
+    $result = true;
+  }
+  else {
+    // Couldn't find JSON file
+    $message = 'Unable to find '.$file;
+    $result = false;
+  }
+
+  // Read JSON file and save
+  if ( $result == true && is_readable($settings_path)) {
+    $setting_string = file_get_contents($settings_path);
+    $result = true;
+
+    if ($setting_string!==false) {
+      
+      $setting_string = preg_replace("/(\\/\\*.*?\\*\\/)/s", '', $setting_string); // Remove // style comments
+      $setting_string = preg_replace("/\\/\\/.*?$/m", '', $setting_string);        // Remove /* */ style comments
+      
+      $setting_json = json_decode($setting_string,true);
+      $result = true;
+
+      if (!is_null($setting_json)) {
+// XXX: drupal_alter goes here
+        variable_set($data,$setting_json);
+        $result = true;
+      }
+      else {
+        $result = false;
+        switch (json_last_error()) {
+            case JSON_ERROR_NONE:
+              $message = 'No JSON errors';
+              break;
+            case JSON_ERROR_DEPTH:
+              $message = 'JSON - Maximum stack depth exceeded';
+              break;
+            case JSON_ERROR_STATE_MISMATCH:
+              $message = 'JSON - Underflow or the modes mismatch';
+              break;
+            case JSON_ERROR_CTRL_CHAR:
+              $message = 'JSON - Unexpected control character found';
+              break;
+            case JSON_ERROR_SYNTAX:
+              $message = 'JSON - Syntax error, malformed JSON';
+              break;
+            case JSON_ERROR_UTF8:
+              $message = 'JSON - Malformed UTF-8 characters, possibly incorrectly encoded';
+              break;
+            default:
+              $message = 'JSON - Unknown error';
+            break;
+        }
+      }
+    }
+    else {
+      // Can't read JSON file
+      $message = 'Unable to read settings from '.$file;
+      $result = false;
+    }
+  }
+  else {
+    // Can't read JSON file
+    $message = 'Unable to load settings from '.$file;
+    $result = false;
+  }
+  
+  if ( !$result ) {
+    drupal_set_message(t($module.': '.$message),'error');
+  }
+
+  return $result;
+}
+
+/**
+ * Create Foundation Interchange image markup
+ *
+ * Creates an <img> tag formatted to work with Foundation's Interchange Javascript
+ * library.  This creates a responsive image in a theme using Foundation.
+ *
+ * @link http://foundation.zurb.com/docs/components/interchange.html
+ *   Documentation for Interchange
+ *
+ * @param string image_uri
+ *   The path to the image using Drupal's URI format; usually the URI element in
+ *   a Drupal image array
+ *
+ * @param string large_style
+ *   The machine name of the image style that will be used to generate an image
+ *   that will be used at Foundation's large size and above
+ *
+ * @param string medium_style
+ *   The machine name of the image style that will be used to generate an image
+ *   that will be used at Foundation's medium size
+ *
+ * @param string small_style
+ *   The machine name of the image style that will be used to generate an image
+ *   that will be used at Foundation's small size
+ *
+ * @return string
+ *   A properly formatted <img> tag that includes all the Foundation Interchange
+ *   markup.
+ */
+function tf_functions_make_interchange ($image_uri, $large_style, $medium_style, $small_style) {
+  
+  $output       = '';
+  
+  $large_image  = image_style_url( $large_style   ,$image_uri);
+  $medium_image = image_style_url( $medium_style  ,$image_uri);
+  $small_image  = image_style_url( $small_style ,$image_uri);
+  
+  $output       = '<img data-interchange="' .
+                    '['.$large_image.', (default)], ' .
+                    '['.$small_image.', (small)], ' .
+                    '['.$medium_image.', (medium)]' .
+                    '['.$large_image.', (large)]' .
+                  '">' .
+                  '<noscript><img src="'.$large_image.'"></noscript>';
+            
+  return $output;
+}
+
+/**
+ * Generic drupal_add_js
+ *
+ * Provides a wrapper for drupal_add_js.  Note that it will only look for a
+ * file named $module.js but will do so in both the module and current theme.
+ * Loads Javascript using a file saved anywhere in the active theme directory
+ * and if not found using $module.js saved anywhere in the calling $module
+ * directory.
+ * 
+ * @link https://api.drupal.org/api/drupal/includes%21common.inc/function/drupal_add_js/7
+ *   Documentation for drupal_add_js
+ *
+ * @param string module
+ *   The name of the module that needs Javascript loaded.  Do not include the
+ *   extension.  This will be converted to $data paramater for drupal_add_js
+ *
+ * @param array options
+ *   This will be passed as the $options parameter for drupal_add_js.  See the
+ *   documentation for that function for valid values.
+ *
+ * @return array
+ *   The current array of JavaScript files, settings, and in-line code, including
+ *   Drupal defaults, anything previously added with calls to drupal_add_js(),
+ *   and this function call's additions.
+ */
+function tf_functions_add_js  ($module, $options = NULL) {
+
+  return( drupal_add_js( _tf_functions_get_file_path  ($module, 'js' ), $options ));
+  
+}
+
+/**
+ * Generic drupal_add_css
+ *
+ * Provides a wrapper for drupal_add_css.  Note that it will only look for a
+ * file named $module.css but will do so in both the module and current theme.
+ * Loads CSS styles using a file saved anywhere in the active theme directory
+ * and if not found using $module.css saved anywhere in the calling $module
+ * directory.
+ * 
+ * @link https://api.drupal.org/api/drupal/includes%21common.inc/function/drupal_add_css/7
+ *   Documentation for drupal_add_css
+ *
+ * @param string module
+ *   The name of the module that needs Javascript loaded.  Do not include the
+ *   extension.  This will be converted to $data paramater for drupal_add_css
+ *
+ * @param array options
+ *   This will be passed as the $options parameter for drupal_add_css.  See the
+ *   documentation for that function for valid values.
+ *
+ * @return array
+ *   An array of queued cascading stylesheets
+ */
+function tf_functions_add_css  ($module, $options = NULL) {
+
+  return( drupal_add_css( _tf_functions_get_file_path  ($module, 'css' ), $options ));
+  
+}
+/**
+ * Get file path from theme or module
+ *
+ * Given a module name and file type, search the active theme and module folder
+ * for a file named $module.$type.   Returns file path for a file saved anywhere
+ * in the active theme directory and if not found saved anywhere in $module.
+ * directory.
+
+ *
+ * @internal
+ *
+ * @param string module
+ *   The name of the module, used as the base file name
+ *
+ * @param string type
+ *   The type of file to search for, used as the file extension
+ *
+ * @return string
+ *   The path to the file, or FALSE if no file was found.
+ */
+function _tf_functions_get_file_path  ($module, $type ) {
+
+  $file_path      = false;
+  $file           = $module . '.' . $type;
+
+  $module_search  = file_scan_directory(drupal_get_path('module', $module) ,'/'.$file.'/', array('key'=>'filename'));
+  $theme_search   = file_scan_directory(drupal_get_path('theme', $GLOBALS['theme'])  ,'/'.$file.'/', array('key'=>'filename'));
+  
+  $file_path      = isset($module_search[$file])  ? $module_search[$file]->uri  : $file_path;
+  $file_path      = isset($theme_search[$file])   ? $theme_search[$file]->uri   : $file_path;
+  
+  return $file_path;  
+}

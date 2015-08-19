@@ -1,0 +1,23 @@
+
+name = Top Floor Utilities
+description = Functions used by other Top Floor modules: Load JSON (stripping comments), Make Interchange (responsive imgages), Add JS (from module or theme)
+core = 7.x
+package = Top Floor
+version = 7.x-2
+; The path of the module's (main) configuration page
+;configure = admin/config/content/example
+
+; Uncomment required modules
+;dependencies[] = ds
+;dependencies[] = tf_functions
+;dependencies[] = tf_libraries
+
+; Add CSS files if they should be added on every page,
+;stylesheets[all][] =
+
+; Add Javascript in the module's .info file if it should be added on every page.
+; This allows Javascript to be aggregated in an optimal way.
+;scripts[] =
+
+; All modules must declare any code files containing class or interface declarations
+;files[] = 
