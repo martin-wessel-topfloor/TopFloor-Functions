@@ -1,6 +1,5 @@
-
 name = Top Floor Utilities
-description = Functions used by other Top Floor modules: Load JSON (stripping comments), Make Interchange (responsive imgages), Add JS (from module or theme)
+description = Functions used by other Top Floor modules (see: <a href="https://github.com/martin-wessel-topfloor/TopFloor-Functions" target="_blank">GitHub Page</a>)
 core = 7.x
 package = Top Floor
 version = 7.x-2
