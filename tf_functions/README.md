@@ -1,5 +1,7 @@
 # TopFloor-Functions
-Basic functions used by many Top Floor modules
+Basic functions used by many Top Floor modules.
+
+See https://github.com/martin-wessel-topfloor/TopFloor-Functions/wiki for more information
 
 ## tf_functions_load_json
 Loads JSON file named $module.json, using a file saved anywhere in the active theme directory and if not found using $module.json saved anywhere in the calling module directory.  The file is parsed with PHP's json_decode command (as an array) and then saved using drupal's variable_set command as an array under the $module_settings key.  No error checking other then file availability
