@@ -222,6 +222,51 @@ function tf_functions_add_css  ($module, $options = NULL) {
   return( drupal_add_css( _tf_functions_get_file_path  ($module, 'css' ), $options ));
   
 }
+
+/**
+ * Get values from a field
+ *
+ * Parse through a field's values and return an array of the values of a single
+ * key:value pair.  Uses Drupal's field_get_items to get raw values.
+ *
+ * @see: https://api.drupal.org/api/drupal/modules%21field%21field.module/function/field_get_items/7
+ *
+ * @param string entity
+ *   The entity type, usually node but can be any valid entity
+ *
+ * @param array $data
+ *   The entity containing the data to be retreived
+ *
+ * @param string field_name
+ *   The machine name of the field contontaining the data to be retreived
+ *
+ * @param string value_key
+ *   The key to the value that should be returned
+ *
+ * @return array
+ *   An array of values, or an empty array if the field has no value.
+ *   Note: May be a single element array if the target field is a
+ *   single value
+ */
+function tf_functions_field_get_items_value ( $entity = 'node', $data, $field_name, $value_key ) {
+  
+  $output     = array();
+  $output_raw = array();
+  
+  $output_raw = field_get_items( $entity, $data, $field_name ); // get raw field values
+  
+  if ( !empty($output_raw ) ) {
+    foreach ( $output_raw as $value ) {
+      if (isset($value[$value_key])) {
+        $output[] = $value[$value_key];
+      }
+    }
+  }
+  
+  return $output;
+  
+}
+
 /**
  * Get file path from theme or module
  *
